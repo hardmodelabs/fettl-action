@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.21-action.1
+      - uses: hardmodelabs/fettl-action@v0.19.21-action.2
         with:
           version: 0.19.21
           scan-mode: auto
@@ -30,18 +30,18 @@ jobs:
           fail-on: high
 ```
 
-`v0.19.21-action.1` is the corrected immutable wrapper candidate for Fettl
+`v0.19.21-action.2` is the corrected immutable wrapper candidate for Fettl
 `v0.19.21`:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.21-action.1
+- uses: hardmodelabs/fettl-action@v0.19.21-action.2
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.21-action.1
+- uses: hardmodelabs/fettl-action@v0.19.21-action.2
   with:
     version: 0.19.21
 ```
@@ -67,8 +67,10 @@ Other operating systems and architectures fail before download.
 - `v0.19.21` is withdrawn because its bundled Node runtime failed during
   module initialization. The immutable tag is preserved for auditability and
   must not be used.
-- `v0.19.21-action.1` replaces that wrapper while installing the unchanged
-  Fettl `v0.19.21` binary.
+- `v0.19.21-action.1` corrects the Node runtime but is withdrawn because its
+  public distribution included a generated source map.
+- `v0.19.21-action.2` removes that source-bearing artifact while installing
+  the unchanged Fettl `v0.19.21` binary.
 - Full-version and corrective candidate tags are immutable.
 - `v0` moves only after the matching immutable Action ref and all supported
   binary artifacts have passed external-consumer verification.
@@ -83,5 +85,5 @@ integration.
 
 This public repository is the source-free GitHub Action distribution boundary.
 It intentionally contains only Action metadata, the reviewed generated bundle,
-its source map, and dependency licenses. Fettl's product source is not
-published here.
+runtime support, and dependency licenses. Fettl's product and Action
+TypeScript sources are not published here.
