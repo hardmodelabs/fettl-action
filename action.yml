@@ -1,0 +1,132 @@
+name: 'Fettl Code Quality Check'
+description: 'Run Fettl to detect AI slop and code quality anti-patterns in PRs and pushes'
+author: 'Code Fettl'
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  github-token:
+    description: 'GitHub token for SARIF upload. Defaults to GITHUB_TOKEN env var.'
+    default: ${{ github.token }}
+    required: false
+  version:
+    description: 'Fettl version to install from downloads.fettl.dev release manifests. "latest" resolves to the current immutable release tag.'
+    default: 'latest'
+    required: false
+  path:
+    description: 'Project root to scan.'
+    default: '.'
+    required: false
+  config:
+    description: 'Optional path to fettl.toml for check settings.'
+    default: ''
+    required: false
+  diff-source:
+    description: 'Auto-detect PR range, or explicit Fettl diff source (staged, branch:X..Y, file:path).'
+    default: 'auto'
+    required: false
+  scan-mode:
+    description: 'Scan mode: auto, pr, push, merge-group, full, or staged.'
+    default: 'auto'
+    required: false
+  baseline-mode:
+    description: 'Baseline mode: new-only, score-delta, or full.'
+    default: 'new-only'
+    required: false
+  fail-on:
+    description: 'When to fail: none, any, low, medium, high, critical, or score-delta.'
+    default: 'high'
+    required: false
+  max-score-increase:
+    description: 'Fails when score delta exceeds this value (used when fail-on: score-delta).'
+    default: '0.3'
+    required: false
+  max-new-critical:
+    description: 'Independent cap on new critical findings; cumulative with fail-on.'
+    default: '0'
+    required: false
+  max-new-high:
+    description: 'Independent cap on new high findings; cumulative with fail-on.'
+    default: '3'
+    required: false
+  warn-only:
+    description: 'Never fail the workflow; still emit summaries/artifacts.'
+    default: 'false'
+    required: false
+  upload-sarif:
+    description: 'Generate/upload SARIF when permissions allow.'
+    default: 'true'
+    required: false
+  sarif-category:
+    description: 'Category for GitHub code scanning upload.'
+    default: 'fettl'
+    required: false
+  upload-artifact:
+    description: 'Upload JSON/SARIF as workflow artifacts.'
+    default: 'true'
+    required: false
+  summary:
+    description: 'Write GitHub job summary.'
+    default: 'true'
+    required: false
+  annotations:
+    description: 'Emit workflow annotations for changed-line findings.'
+    default: 'true'
+    required: false
+  timeout:
+    description: 'Max seconds for Fettl execution.'
+    default: '120'
+    required: false
+  extra-args:
+    description: 'Optional Fettl check filter (`--filter NAME`); control-plane and path arguments are rejected.'
+    default: ''
+    required: false
+  provider-settings-assertion:
+    description: 'Versioned JSON assertion from authorized repository settings. PR runs fail closed unless GitHub Action is the selected publisher.'
+    default: ''
+    required: false
+
+outputs:
+  scan-mode:
+    description: 'Resolved scan mode used for this run.'
+  baseline-mode:
+    description: 'Authoritative policy mode requested for this run.'
+  fail-on:
+    description: 'Finding threshold policy requested for this run.'
+  base-ref:
+    description: 'Exact resolved base revision when a comparison was performed.'
+  head-ref:
+    description: 'Exact resolved head revision when a comparison was performed.'
+  comparison:
+    description: 'Human-readable description of the resolved comparison.'
+  decision:
+    description: 'pass, warn, or fail.'
+  terminal-outcome:
+    description: 'Terminal result: pass, warn, fail, or error.'
+  terminal-reason:
+    description: 'Terminal decision reason, especially for fail-closed outcomes.'
+  score-before:
+    description: 'Baseline score if available.'
+  score-after:
+    description: 'Current score if available.'
+  score-delta:
+    description: 'Score delta if available.'
+  findings-total:
+    description: 'Total unsuppressed findings in action scope.'
+  new-critical:
+    description: 'New critical findings.'
+  new-high:
+    description: 'New high findings.'
+  sarif-path:
+    description: 'Path to SARIF file if generated.'
+  json-path:
+    description: 'Path to JSON report.'
+  publication-identity:
+    description: 'Provider-neutral repository/PR/head/settings/policy identity for authoritative publication deduplication.'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
+  post: 'dist/index.js'
+  post-if: 'always()'
