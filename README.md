@@ -22,28 +22,28 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.21-action.2
+      - uses: hardmodelabs/fettl-action@v0.19.23-action.1
         with:
-          version: 0.19.21
+          version: 0.19.23
           scan-mode: auto
           baseline-mode: new-only
           fail-on: high
 ```
 
-`v0.19.21-action.2` is the corrected immutable wrapper candidate for Fettl
-`v0.19.21`:
+`v0.19.23-action.1` is the corrected immutable wrapper candidate for Fettl
+`v0.19.23`:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.21-action.2
+- uses: hardmodelabs/fettl-action@v0.19.23-action.1
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.21-action.2
+- uses: hardmodelabs/fettl-action@v0.19.23-action.1
   with:
-    version: 0.19.21
+    version: 0.19.23
 ```
 
 `version: latest` resolves through the release manifest at
@@ -71,6 +71,10 @@ Other operating systems and architectures fail before download.
   public distribution included a generated source map.
 - `v0.19.21-action.2` removes that source-bearing artifact while installing
   the unchanged Fettl `v0.19.21` binary.
+- `v0.19.23` installs the verified Fettl `v0.19.23` binary but retains stale
+  `v0.19.21-action.2` usage instructions in its immutable repository tree.
+- `v0.19.23-action.1` corrects those instructions without changing the
+  reviewed Action bundle or installed Fettl `v0.19.23` binary.
 - Full-version and corrective candidate tags are immutable.
 - `v0` moves only after the matching immutable Action ref and all supported
   binary artifacts have passed external-consumer verification.
