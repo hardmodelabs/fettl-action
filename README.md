@@ -22,29 +22,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.23-action.1
+      - uses: hardmodelabs/fettl-action@v0.19.26
         with:
-          version: 0.19.23
+          version: 0.19.26
           scan-mode: auto
           baseline-mode: new-only
           fail-on: high
+          annotation-cap: 3
+          summary-finding-cap: 10
 ```
 
-`v0.19.23-action.1` is the corrected immutable wrapper candidate for Fettl
-`v0.19.23`:
+`v0.19.25` is the corrected immutable wrapper candidate for Fettl
+`v0.19.25`:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.23-action.1
+- uses: hardmodelabs/fettl-action@v0.19.26
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.23-action.1
+- uses: hardmodelabs/fettl-action@v0.19.26
   with:
-    version: 0.19.23
+    version: 0.19.26
 ```
+
+For pull-request runs, Fettl computes one canonical, ordered publication plan
+that the Action projects directly into GitHub surfaces. `annotation-cap`
+defaults to 3 and accepts 0 to suppress inline annotations.
+`summary-finding-cap` defaults to 10. These display caps never change the
+authoritative pass, warn, or fail result, and complete JSON and SARIF artifacts
+remain available independently of the human-readable limits.
 
 `version: latest` resolves through the release manifest at
 `downloads.fettl.dev` to an immutable version before cache lookup. The Action
@@ -82,7 +91,7 @@ Other operating systems and architectures fail before download.
   full-version tag. Full-version tags are never rewritten.
 
 The `v0` compatibility alias has not been published yet. The Action's
-machine-readable assessment requires an active Fettl Solo entitlement.
+machine-readable assessment requires an active Fettl Pro entitlement.
 Automated runner provisioning for that entitlement is still being completed,
 so this corrective tag is a release candidate rather than the default
 integration.
