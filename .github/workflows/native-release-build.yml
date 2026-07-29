@@ -1,0 +1,478 @@
+name: Native Fettl release builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact Fettl release version without the v prefix
+        required: true
+        type: string
+      commit:
+        description: Exact 40-character source commit
+        required: true
+        type: string
+      source_input_sha256:
+        description: SHA-256 of the commit-bound private source input
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-fettl-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  gate:
+    name: Verify private source release gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Hydrate exact private source
+        shell: bash
+        env:
+          FETTL_SOURCE_URL: ${{ secrets.FETTL_SOURCE_URL }}
+          EXPECTED_SOURCE_INPUT_SHA256: ${{ inputs.source_input_sha256 }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_SOURCE_INPUT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test -n "$FETTL_SOURCE_URL"
+          curl --fail --silent --show-error \
+            "$FETTL_SOURCE_URL" \
+            --output fettl-release-input.tar.gz
+          python3 - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          release_input = Path("fettl-release-input.tar.gz")
+          actual = hashlib.sha256(release_input.read_bytes()).hexdigest()
+          expected = os.environ["EXPECTED_SOURCE_INPUT_SHA256"]
+          if actual != expected:
+              raise SystemExit(
+                  f"source input checksum mismatch: expected {expected}, got {actual}"
+              )
+          PY
+          mkdir release-input
+          tar -xzf fettl-release-input.tar.gz \
+            -C release-input \
+            --strip-components=1
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          release_input = Path("release-input")
+          entries = tuple(release_input.iterdir())
+          actual_names = {path.name for path in entries}
+          expected_names = {"fettl-source.tar.gz", "source-binding.json"}
+          if actual_names != expected_names or not all(path.is_file() for path in entries):
+              raise SystemExit(
+                  "private source input file set differs: "
+                  f"expected {sorted(expected_names)}, got {sorted(actual_names)}"
+              )
+          binding = json.loads((release_input / "source-binding.json").read_text())
+          expected_binding_keys = {
+              "schema_version",
+              "source_archive_sha256",
+              "source_commit",
+          }
+          if set(binding) != expected_binding_keys:
+              raise SystemExit("private source binding fields differ")
+          if binding["schema_version"] != 1:
+              raise SystemExit("private source binding schema differs")
+          if binding["source_commit"] != os.environ["RELEASE_COMMIT"]:
+              raise SystemExit("private source binding commit differs")
+          source_archive = release_input / "fettl-source.tar.gz"
+          source_digest = hashlib.sha256(source_archive.read_bytes()).hexdigest()
+          if binding["source_archive_sha256"] != source_digest:
+              raise SystemExit("private source binding archive digest differs")
+          PY
+          mkdir source
+          tar -xzf release-input/fettl-source.tar.gz \
+            -C source \
+            --strip-components=1
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          manifest = Path("source/crates/fettl/Cargo.toml").read_text()
+          match = re.search(r'^version = "([^"]+)"$', manifest, re.MULTILINE)
+          if match is None:
+              raise SystemExit("fettl package version is missing")
+          expected = os.environ["RELEASE_VERSION"]
+          if match.group(1) != expected:
+              raise SystemExit(
+                  f"source version mismatch: expected {expected}, got {match.group(1)}"
+              )
+          if not Path("source/Cargo.lock").is_file():
+              raise SystemExit("source archive is missing Cargo.lock")
+          PY
+          (
+            cd source
+            git init --quiet --initial-branch release-build
+            git config user.name "Fettl release builder"
+            git config user.email "release-builder@users.noreply.github.com"
+            git add --all
+            git commit --quiet --message "Materialize immutable release source"
+            git tag "v${RELEASE_VERSION}"
+          )
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: "1.95"
+
+      - name: Install pre-commit
+        run: python3 -m pip install pre-commit
+
+      - name: Run workspace tests
+        working-directory: source
+        run: cargo test --workspace --locked
+
+      - name: Run full pre-commit release gate
+        working-directory: source
+        run: pre-commit run --all-files
+
+      - name: Run self-check
+        working-directory: source
+        run: bash scripts/self-check.sh
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: gate
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: fettl-linux-x86_64.tar.gz
+            python: python3
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+            archive: fettl-linux-aarch64.tar.gz
+            python: python3
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+            archive: fettl-macos-x86_64.tar.gz
+            python: python3
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: fettl-macos-aarch64.tar.gz
+            python: python3
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: fettl-windows-x86_64.zip
+            python: python
+    steps:
+      - name: Hydrate exact private source
+        shell: bash
+        env:
+          FETTL_SOURCE_URL: ${{ secrets.FETTL_SOURCE_URL }}
+          EXPECTED_SOURCE_INPUT_SHA256: ${{ inputs.source_input_sha256 }}
+          PYTHON_COMMAND: ${{ matrix.python }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_SOURCE_INPUT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test -n "$FETTL_SOURCE_URL"
+          curl --fail --silent --show-error \
+            "$FETTL_SOURCE_URL" \
+            --output fettl-release-input.tar.gz
+          "$PYTHON_COMMAND" - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          release_input = Path("fettl-release-input.tar.gz")
+          actual = hashlib.sha256(release_input.read_bytes()).hexdigest()
+          expected = os.environ["EXPECTED_SOURCE_INPUT_SHA256"]
+          if actual != expected:
+              raise SystemExit(
+                  f"source input checksum mismatch: expected {expected}, got {actual}"
+              )
+          PY
+          mkdir release-input
+          tar -xzf fettl-release-input.tar.gz \
+            -C release-input \
+            --strip-components=1
+          "$PYTHON_COMMAND" - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          release_input = Path("release-input")
+          entries = tuple(release_input.iterdir())
+          actual_names = {path.name for path in entries}
+          expected_names = {"fettl-source.tar.gz", "source-binding.json"}
+          if actual_names != expected_names or not all(path.is_file() for path in entries):
+              raise SystemExit(
+                  "private source input file set differs: "
+                  f"expected {sorted(expected_names)}, got {sorted(actual_names)}"
+              )
+          binding = json.loads((release_input / "source-binding.json").read_text())
+          expected_binding_keys = {
+              "schema_version",
+              "source_archive_sha256",
+              "source_commit",
+          }
+          if set(binding) != expected_binding_keys:
+              raise SystemExit("private source binding fields differ")
+          if binding["schema_version"] != 1:
+              raise SystemExit("private source binding schema differs")
+          if binding["source_commit"] != os.environ["RELEASE_COMMIT"]:
+              raise SystemExit("private source binding commit differs")
+          source_archive = release_input / "fettl-source.tar.gz"
+          source_digest = hashlib.sha256(source_archive.read_bytes()).hexdigest()
+          if binding["source_archive_sha256"] != source_digest:
+              raise SystemExit("private source binding archive digest differs")
+          PY
+          mkdir source
+          tar -xzf release-input/fettl-source.tar.gz \
+            -C source \
+            --strip-components=1
+          "$PYTHON_COMMAND" - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          manifest = Path("source/crates/fettl/Cargo.toml").read_text()
+          match = re.search(r'^version = "([^"]+)"$', manifest, re.MULTILINE)
+          if match is None:
+              raise SystemExit("fettl package version is missing")
+          expected = os.environ["RELEASE_VERSION"]
+          if match.group(1) != expected:
+              raise SystemExit(
+                  f"source version mismatch: expected {expected}, got {match.group(1)}"
+              )
+          if not Path("source/Cargo.lock").is_file():
+              raise SystemExit("source archive is missing Cargo.lock")
+          PY
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: "1.95"
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build CLI
+        working-directory: source
+        run: cargo build --locked --release --target ${{ matrix.target }} -p fettl --bin fettl
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
+      - name: Smoke-test CLI on Unix
+        if: matrix.target != 'x86_64-pc-windows-msvc'
+        shell: bash
+        working-directory: source
+        run: |
+          binary="$PWD/target/${{ matrix.target }}/release/fettl"
+          "$binary" --version | grep -F "${{ inputs.version }}"
+          smoke_dir="$(mktemp -d)"
+          mkdir -p "$smoke_dir/src"
+          cat > "$smoke_dir/Cargo.toml" <<'EOF'
+          [package]
+          name = "smoke"
+          version = "0.1.0"
+          edition = "2021"
+          EOF
+          cat > "$smoke_dir/src/main.rs" <<'EOF'
+          fn main() {}
+          EOF
+          (
+            cd "$smoke_dir"
+            "$binary" check --full > /dev/null
+          )
+
+      - name: Smoke-test CLI on Windows
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: pwsh
+        working-directory: source
+        run: |
+          $binary = (Resolve-Path "target/${{ matrix.target }}/release/fettl.exe").Path
+          (& $binary --version | Out-String) | Select-String -SimpleMatch "${{ inputs.version }}" | Out-Null
+          $smokeDir = Join-Path $env:RUNNER_TEMP "fettl-smoke"
+          Remove-Item $smokeDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path (Join-Path $smokeDir "src") -Force | Out-Null
+          @"
+          [package]
+          name = "smoke"
+          version = "0.1.0"
+          edition = "2021"
+          "@ | Set-Content (Join-Path $smokeDir "Cargo.toml")
+          "fn main() {}" | Set-Content (Join-Path $smokeDir "src/main.rs")
+          Push-Location $smokeDir
+          try {
+            & $binary check --full | Out-Null
+          } finally {
+            Pop-Location
+          }
+          $unsupported = & $binary supervisor status 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            throw "expected supervisor status to fail on Windows"
+          }
+          if (($unsupported | Out-String) -notmatch "supervisor is only supported on Unix") {
+            throw "unexpected Windows supervisor failure: $($unsupported | Out-String)"
+          }
+
+      - name: Package and re-test Unix archive
+        if: matrix.target != 'x86_64-pc-windows-msvc'
+        shell: bash
+        working-directory: source
+        run: |
+          mkdir -p dist/package
+          cp "target/${{ matrix.target }}/release/fettl" dist/package/fettl
+          tar -czf "dist/${{ matrix.archive }}" -C dist/package fettl
+          extract_dir="$(mktemp -d)"
+          tar -xzf "dist/${{ matrix.archive }}" -C "$extract_dir"
+          "$extract_dir/fettl" --version | grep -F "${{ inputs.version }}"
+          smoke_dir="$(mktemp -d)"
+          mkdir -p "$smoke_dir/src"
+          cat > "$smoke_dir/Cargo.toml" <<'EOF'
+          [package]
+          name = "smoke"
+          version = "0.1.0"
+          edition = "2021"
+          EOF
+          cat > "$smoke_dir/src/main.rs" <<'EOF'
+          fn main() {}
+          EOF
+          (
+            cd "$smoke_dir"
+            "$extract_dir/fettl" check --full > /dev/null
+          )
+
+      - name: Package and re-test Windows archive
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: pwsh
+        working-directory: source
+        run: |
+          New-Item -ItemType Directory -Path "dist/package" -Force | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/fettl.exe" "dist/package/fettl.exe"
+          Compress-Archive -Path "dist/package/fettl.exe" -DestinationPath "dist/${{ matrix.archive }}"
+          $extractDir = Join-Path $env:RUNNER_TEMP "fettl-extract"
+          Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive -Path "dist/${{ matrix.archive }}" -DestinationPath $extractDir
+          (& "$extractDir/fettl.exe" --version | Out-String) | Select-String -SimpleMatch "${{ inputs.version }}" | Out-Null
+          $smokeDir = Join-Path $env:RUNNER_TEMP "fettl-extracted-smoke"
+          Remove-Item $smokeDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path (Join-Path $smokeDir "src") -Force | Out-Null
+          @"
+          [package]
+          name = "smoke"
+          version = "0.1.0"
+          edition = "2021"
+          "@ | Set-Content (Join-Path $smokeDir "Cargo.toml")
+          "fn main() {}" | Set-Content (Join-Path $smokeDir "src/main.rs")
+          Push-Location $smokeDir
+          try {
+            & "$extractDir/fettl.exe" check --full | Out-Null
+          } finally {
+            Pop-Location
+          }
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ matrix.archive }}
+          path: source/dist/${{ matrix.archive }}
+          if-no-files-found: error
+          retention-days: 1
+
+  bundle:
+    name: Assemble exact native release bundle
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download native build artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Validate and describe exact release bundle
+        env:
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          SOURCE_INPUT_SHA256: ${{ inputs.source_input_sha256 }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          expected = (
+              "fettl-linux-aarch64.tar.gz",
+              "fettl-linux-x86_64.tar.gz",
+              "fettl-macos-aarch64.tar.gz",
+              "fettl-macos-x86_64.tar.gz",
+              "fettl-windows-x86_64.zip",
+          )
+          dist = Path("dist")
+          actual = tuple(sorted(path.name for path in dist.iterdir() if path.is_file()))
+          if actual != expected:
+              raise SystemExit(
+                  f"native release asset set differs: expected {expected}, got {actual}"
+              )
+
+          assets = {}
+          checksum_lines = []
+          for name in expected:
+              path = dist / name
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              assets[name] = {"sha256": digest, "size": path.stat().st_size}
+              checksum_lines.append(f"{digest}  {name}")
+          (dist / "checksums-sha256.txt").write_text(
+              "\n".join(checksum_lines) + "\n"
+          )
+          manifest = {
+              "schema_version": 1,
+              "version": os.environ["RELEASE_VERSION"],
+              "source_commit": os.environ["RELEASE_COMMIT"],
+              "source_input_sha256": os.environ["SOURCE_INPUT_SHA256"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "assets": assets,
+          }
+          (dist / "native-build-manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+          )
+          PY
+
+      - name: Upload exact native release bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-release-${{ inputs.version }}
+          path: |
+            dist/checksums-sha256.txt
+            dist/fettl-linux-x86_64.tar.gz
+            dist/fettl-linux-aarch64.tar.gz
+            dist/fettl-macos-x86_64.tar.gz
+            dist/fettl-macos-aarch64.tar.gz
+            dist/fettl-windows-x86_64.zip
+            dist/native-build-manifest.json
+          if-no-files-found: error
+          retention-days: 1
