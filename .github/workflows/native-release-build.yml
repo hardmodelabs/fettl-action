@@ -133,8 +133,8 @@ jobs:
         with:
           toolchain: "1.95"
 
-      - name: Install pre-commit
-        run: python3 -m pip install pre-commit
+      - name: Install Python gate tooling
+        run: python3 -m pip install --upgrade pip pre-commit pytest ruff
 
       - name: Run workspace tests
         working-directory: source
