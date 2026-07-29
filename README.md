@@ -1,7 +1,9 @@
 # Fettl Action
 
-Run [Fettl](https://fettl.dev) in GitHub Actions without checking out or
-building the Fettl source repository.
+Run
+[Fettl](https://fettl-dev.major-leaf-1682.chatgpt.site)
+in GitHub Actions without checking out or building the Fettl source
+repository.
 
 ```yaml
 name: Fettl
@@ -22,9 +24,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.26
+      - uses: hardmodelabs/fettl-action@v0.19.27
         with:
-          version: 0.19.26
+          version: 0.19.27
           scan-mode: auto
           baseline-mode: new-only
           fail-on: high
@@ -32,20 +34,19 @@ jobs:
           summary-finding-cap: 10
 ```
 
-`v0.19.25` is the corrected immutable wrapper candidate for Fettl
-`v0.19.25`:
+`v0.19.27` is the immutable wrapper candidate for Fettl `v0.19.27`:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.26
+- uses: hardmodelabs/fettl-action@v0.19.27
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.26
+- uses: hardmodelabs/fettl-action@v0.19.27
   with:
-    version: 0.19.26
+    version: 0.19.27
 ```
 
 For pull-request runs, Fettl computes one canonical, ordered publication plan
