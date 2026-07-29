@@ -24,9 +24,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.27
+      - uses: hardmodelabs/fettl-action@v0.19.28
         with:
-          version: 0.19.27
+          version: 0.19.28
           scan-mode: auto
           baseline-mode: new-only
           fail-on: high
@@ -34,19 +34,19 @@ jobs:
           summary-finding-cap: 10
 ```
 
-`v0.19.27` is the immutable wrapper candidate for Fettl `v0.19.27`:
+`v0.19.28` is the immutable wrapper candidate for Fettl `v0.19.28`:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.27
+- uses: hardmodelabs/fettl-action@v0.19.28
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.27
+- uses: hardmodelabs/fettl-action@v0.19.28
   with:
-    version: 0.19.27
+    version: 0.19.28
 ```
 
 For pull-request runs, Fettl computes one canonical, ordered publication plan
