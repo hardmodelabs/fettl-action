@@ -133,8 +133,45 @@ jobs:
         with:
           toolchain: "1.95"
 
+      - name: Load pinned Action toolchain
+        id: action_toolchain
+        run: |
+          python3 - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          build = tomllib.loads(
+              Path("source/action/toolchain.toml").read_text(encoding="utf-8")
+          )["action_build"]
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"node={build['node']}\n")
+              handle.write(f"npm={build['npm']}\n")
+          PY
+
+      - name: Install Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ steps.action_toolchain.outputs.node }}
+          cache: npm
+          cache-dependency-path: source/action/package-lock.json
+
+      - name: Install pinned npm
+        run: npm install --global npm@${{ steps.action_toolchain.outputs.npm }}
+
+      - name: Verify pinned Node/npm contract
+        run: |
+          test "$(node --version)" = "v${{ steps.action_toolchain.outputs.node }}"
+          test "$(npm --version)" = "${{ steps.action_toolchain.outputs.npm }}"
+
       - name: Install Python gate tooling
-        run: python3 -m pip install --upgrade pip pre-commit pytest ruff
+        run: python3 -m pip install --upgrade pip pre-commit pytest ruff tomli-w
+
+      - name: Rebuild private Action dist
+        working-directory: source/action
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
 
       - name: Run workspace tests
         working-directory: source
