@@ -133,6 +133,14 @@ jobs:
         with:
           toolchain: "1.95"
 
+      - name: Install pinned inferno tooling
+        run: cargo install --locked inferno --version 0.12.8
+
+      - name: Verify inferno tooling contract
+        run: |
+          command -v inferno-flamegraph
+          command -v inferno-collapse-perf
+
       - name: Load pinned Action toolchain
         id: action_toolchain
         run: |
