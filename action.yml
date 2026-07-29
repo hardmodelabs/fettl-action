@@ -50,6 +50,14 @@ inputs:
     description: 'Independent cap on new high findings; cumulative with fail-on.'
     default: '3'
     required: false
+  annotation-cap:
+    description: 'Maximum canonical publication-plan findings emitted as inline annotations. Set to 0 to disable inline findings without changing the gate verdict.'
+    default: '3'
+    required: false
+  summary-finding-cap:
+    description: 'Maximum canonical publication-plan findings shown in the human-readable job summary.'
+    default: '10'
+    required: false
   warn-only:
     description: 'Never fail the workflow; still emit summaries/artifacts.'
     default: 'false'

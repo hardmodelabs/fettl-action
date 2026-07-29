@@ -1,58 +1,106 @@
-Fettl Proprietary Free-and-Solo License
-=======================================
+Fettl Proprietary Free and Pro License
+======================================
 
 Copyright (c) 2026 Hard Mode Labs. All rights reserved.
 
-This repository and its contents are proprietary software. The source code,
-documentation, configuration files, generated assets, and related materials may
-be used only under this license or another written commercial agreement from
-Hard Mode Labs.
+Fettl and all first-party Fettl source code, binaries, documentation,
+configuration, generated assets, service materials, branding, and other
+first-party material are proprietary and remain owned by Hard Mode Labs. No
+Free access, Pro access, payment, download, or other use transfers ownership of
+any first-party Fettl intellectual property.
 
-Free permitted uses
--------------------
+Free license
+------------
 
-You may run, copy, and modify this software for:
+Subject to this license, Hard Mode Labs grants a limited, revocable, no-cost,
+non-exclusive, non-transferable proprietary license to download, install, run,
+and make only the internal copies reasonably necessary to use first-party Fettl
+material for:
 
 - personal projects;
 - education;
 - public open-source projects; and
 - time-limited evaluation of private or commercial repositories.
 
-These Free permissions do not grant ongoing commercial production use.
+Free does not mean open source, free software, unrestricted use, public-domain
+dedication, redistribution permission, or an ownership grant. Free does not
+authorize ongoing commercial production use.
 
-Uses that require a written commercial agreement
-------------------------------------------------
+Pro license
+-----------
 
-Without a separate written commercial agreement from Hard Mode Labs, you may
+Pro is the only paid self-service plan. Subject to this license and an active
+trial or subscription term, Pro grants one named commercial developer a
+non-exclusive, non-transferable proprietary license to download, install, run,
+and make only the internal copies reasonably necessary to use first-party Fettl
+material for ongoing commercial-production work on repositories that developer
+is authorized to work on. Pro is not priced by repository count.
+
+Pro does not include or grant any right to LLM-assisted repair, external-agent
+repair, hosted repair execution, provider-token repair, repair credits,
+dashboard access, or unavailable Max, Team, Enterprise, or similar future
+capabilities unless a separate written agreement expressly grants them.
+
+Restrictions
+------------
+
+Except as expressly granted above or in a separate written agreement from Hard
+Mode Labs or another later written agreement from the repository owner, you may
 not:
 
-- use this software for ongoing commercial production work;
-- redistribute, sublicense, resell, or offer it as a managed or hosted service;
-- publish benchmark results for marketing or comparative claims;
-- use Hard Mode Labs or Fettl trademarks to identify another product or
-  distribution.
+- redistribute, resell, sublicense, assign, publish, or otherwise transfer
+  first-party Fettl material to another party;
+- host, expose, rent, lease, timeshare, or provide first-party Fettl material
+  as a service for third parties;
+- copy, modify, or create derivative works of first-party Fettl material beyond
+  the internal copies necessary for authorized use;
+- remove, obscure, or alter proprietary notices;
+- use Hard Mode Labs or Fettl names, logos, or trademarks in a misleading way
+  or to imply sponsorship, endorsement, or origin for another product or
+  service; or
+- bypass, disable, or circumvent technical, contractual, or entitlement
+  restrictions that limit access to paid or unavailable capabilities.
 
-Paid commercial-use grant
--------------------------
+Customer and third-party ownership
+----------------------------------
 
-When Hard Mode Labs offers you an active Solo subscription or another written
-commercial agreement, that agreement grants ongoing commercial-use rights only
-for the user, repositories, features, and term it explicitly covers. Solo is
-the launch self-service commercial plan for one developer. Reserved identifiers
-such as Team and Enterprise do not grant any rights or availability unless a
-separate written agreement says otherwise.
+Customer code, repositories, prompts, inputs, outputs, and other customer
+content remain owned by the customer or the customer's licensors. Third-party
+code and other third-party materials remain owned by their respective licensors.
+This license does not claim ownership of customer content or third-party
+material.
+
+Suspension and termination
+--------------------------
+
+Hard Mode Labs may suspend or terminate Free or Pro access, or revoke this
+license, if you violate this license, misuse first-party Fettl material,
+attempt circumvention, fail to maintain an active Pro term for paid use, or if
+Hard Mode Labs otherwise withdraws the applicable access grant. On termination
+or revocation, you must stop using first-party Fettl material except to the
+extent a separate written agreement expressly permits continued use.
+
+No implied rights
+-----------------
+
+No license or other right is granted by implication, estoppel, exhaustion, or
+otherwise under any copyright, patent, trademark, trade secret, or other
+intellectual-property right covering first-party Fettl material.
 
 No warranty
 -----------
 
-This software is provided "as is", without warranty of any kind, express or
-implied, including but not limited to the warranties of merchantability, fitness
-for a particular purpose, title, and non-infringement. In no event shall the
-copyright holder be liable for any claim, damages, or other liability arising
-from use of this software.
+First-party Fettl material is provided "as is", without warranty of any kind,
+express or implied, including warranties of merchantability, fitness for a
+particular purpose, title, and non-infringement. To the maximum extent allowed
+by applicable law, Hard Mode Labs is not liable for any claim, damages, or
+other liability arising from or related to use of first-party Fettl material.
 
 Precedence
 ----------
 
-An applicable written commercial agreement supersedes this license only for the
-parties, scope, and term expressly covered by that agreement.
+An applicable separate written agreement supersedes this license only for the
+parties, scope, and term it expressly covers. If there is a conflict between
+this file and a later written repository-owner direction or another separate
+written agreement, the later written direction or agreement controls only to the
+extent of that conflict.
