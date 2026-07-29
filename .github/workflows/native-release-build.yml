@@ -189,9 +189,15 @@ jobs:
         working-directory: source
         run: pre-commit run --all-files
 
+      - name: Build self-check binary
+        working-directory: source
+        run: env -u CARGO_TARGET_DIR -u CARGO_HOME -u RUSTUP_HOME cargo build --release
+
       - name: Run self-check
         working-directory: source
-        run: bash scripts/self-check.sh
+        env:
+          FETTL_ENTITLEMENT_JSON: ${{ secrets.FETTL_ENTITLEMENT_JSON }}
+        run: ./target/release/fettl check . --config fettl.toml
 
   build:
     name: Build ${{ matrix.target }}
