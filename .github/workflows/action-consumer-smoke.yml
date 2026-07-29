@@ -1,0 +1,207 @@
+name: Action Consumer Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      action-ref:
+        description: Public Action tag to verify after publication.
+        required: true
+        default: v0.19.29
+        type: choice
+        options:
+          - v0.19.29
+          - v0
+      expected-action-commit:
+        description: Commit SHA that the published public Action tag must resolve to.
+        required: true
+        default: 7e0ad50b8cf748e6e90c8218878165d6724fb7b8
+      expected-version:
+        description: Fettl version expected from the installed binary.
+        required: true
+        default: 0.19.29
+
+permissions:
+  contents: read
+
+jobs:
+  consumer-smoke:
+    name: consumer-smoke/${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-latest-x86_64
+            runner: ubuntu-latest
+            target_arch: x86_64
+          - name: ubuntu-24.04-arm-arm64
+            runner: ubuntu-24.04-arm
+            target_arch: arm64
+          - name: macos-15-intel-x86_64
+            runner: macos-15-intel
+            target_arch: x86_64
+          - name: macos-latest-arm64
+            runner: macos-latest
+            target_arch: arm64
+    steps:
+      - name: Resolve Action ref to exact public commit
+        shell: bash
+        env:
+          ACTION_REF: ${{ inputs.action-ref }}
+          EXPECTED_ACTION_COMMIT: ${{ inputs.expected-action-commit }}
+          EXPECTED_VERSION: ${{ inputs.expected-version }}
+        run: |
+          test "$EXPECTED_VERSION" = "0.19.29"
+          tag_ref="refs/tags/${ACTION_REF}"
+          tag_rows="$(
+            git ls-remote --tags \
+              https://github.com/hardmodelabs/fettl-action.git \
+              "$tag_ref" "${tag_ref}^{}"
+          )"
+          tag_sha="$(printf '%s\n' "$tag_rows" | awk -v ref="$tag_ref" '$2 == ref {print $1}')"
+          peeled_sha="$(
+            printf '%s\n' "$tag_rows" |
+              awk -v ref="${tag_ref}^{}" '$2 == ref {print $1}'
+          )"
+          test -n "$tag_sha"
+          test "$(printf '%s\n' "$tag_sha" | wc -l | tr -d ' ')" = "1"
+          if test -n "$peeled_sha"; then
+            test "$(printf '%s\n' "$peeled_sha" | wc -l | tr -d ' ')" = "1"
+            resolved_sha="$peeled_sha"
+          else
+            resolved_sha="$tag_sha"
+          fi
+          printf 'resolved %s -> %s\n' "$ACTION_REF" "$resolved_sha"
+          test "$resolved_sha" = "$EXPECTED_ACTION_COMMIT"
+          printf 'ACTION_COMMIT_SHA=%s\n' "$resolved_sha" >> "$GITHUB_ENV"
+
+      - name: Download public Action bundle by exact commit
+        shell: bash
+        env:
+          ACTION_COMMIT_SHA: ${{ env.ACTION_COMMIT_SHA }}
+        run: |
+          rm -rf public-action public-action.tgz
+          mkdir -p public-action
+          curl -fsSL "https://codeload.github.com/hardmodelabs/fettl-action/tar.gz/${ACTION_COMMIT_SHA}" \
+            -o public-action.tgz
+          tar -xzf public-action.tgz --strip-components=1 -C public-action
+          rm -f public-action.tgz
+          test -f public-action/action.yml
+          test -f public-action/dist/index.js
+          test ! -d public-action/src
+
+      - name: Create isolated consumer repository
+        shell: bash
+        run: |
+          mkdir -p consumer/src consumer/crates/fettl consumer/bin
+          cat <<'EOF' > consumer/Cargo.toml
+          [package]
+          name = "fettl-consumer-smoke"
+          version = "0.1.0"
+          edition = "2021"
+          EOF
+          cat <<'EOF' > consumer/src/main.rs
+          fn main() {
+              println!("consumer smoke fixture");
+          }
+          EOF
+          cat <<'EOF' > consumer/crates/fettl/build.rs
+          fn main() {
+              std::fs::write("../cargo-fallback-ran.txt", "unexpected cargo execution\n").unwrap();
+          }
+          EOF
+          cat <<'EOF' > consumer/bin/cargo
+          #!/usr/bin/env bash
+          echo "unexpected cargo fallback" >> "${RUNNER_TEMP}/cargo-trap.log"
+          exit 97
+          EOF
+          chmod +x consumer/bin/cargo
+          (
+            cd consumer
+            git init
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "consumer smoke fixture"
+          )
+
+      - name: Prepend cargo trap to PATH
+        shell: bash
+        run: echo "${GITHUB_WORKSPACE}/consumer/bin" >> "$GITHUB_PATH"
+
+      - name: Run public released Action against consumer fixture
+        id: fettl
+        uses: ./public-action
+        with:
+          version: ${{ inputs.expected-version }}
+          path: consumer
+          scan-mode: full
+          baseline-mode: full
+          fail-on: none
+          upload-sarif: false
+          upload-artifact: false
+          annotations: false
+          summary: false
+
+      - name: Assert Action output contract
+        shell: bash
+        env:
+          EXPECTED_ACTION_COMMIT: ${{ inputs.expected-action-commit }}
+          EXPECTED_VERSION: ${{ inputs.expected-version }}
+          EXPECTED_ARCH: ${{ matrix.target_arch }}
+          ACTION_COMMIT_SHA: ${{ env.ACTION_COMMIT_SHA }}
+          SCAN_MODE: ${{ steps.fettl.outputs.scan-mode }}
+          BASELINE_MODE: ${{ steps.fettl.outputs.baseline-mode }}
+          FAIL_ON: ${{ steps.fettl.outputs.fail-on }}
+          DECISION: ${{ steps.fettl.outputs.decision }}
+          TERMINAL_OUTCOME: ${{ steps.fettl.outputs.terminal-outcome }}
+          FINDINGS_TOTAL: ${{ steps.fettl.outputs.findings-total }}
+          JSON_PATH: ${{ steps.fettl.outputs.json-path }}
+        run: |
+          test "$EXPECTED_ACTION_COMMIT" = "$ACTION_COMMIT_SHA"
+          test "$EXPECTED_VERSION" = "0.19.29"
+          test "$SCAN_MODE" = "full"
+          test "$BASELINE_MODE" = "full"
+          test "$FAIL_ON" = "none"
+          test "$DECISION" = "pass"
+          test "$TERMINAL_OUTCOME" = "pass"
+          test "$FINDINGS_TOTAL" = "0"
+          test -n "$JSON_PATH"
+          test -f "$JSON_PATH"
+          grep -q '"terminal_outcome":"pass"' "$JSON_PATH"
+
+          version_output="$(fettl --version)"
+          printf '%s\n' "$version_output"
+          case "$version_output" in
+            *"$EXPECTED_VERSION"*) ;;
+            *)
+              echo "unexpected fettl version: $version_output" >&2
+              exit 1
+              ;;
+          esac
+
+          run_output="$(fettl check consumer --format json)"
+          printf '%s\n' "$run_output"
+          printf '%s\n' "$run_output" | grep -q '"violations":\[\]'
+
+          case "$(uname -m)" in
+            x86_64|amd64)
+              actual_arch="x86_64"
+              ;;
+            arm64|aarch64)
+              actual_arch="arm64"
+              ;;
+            *)
+              echo "unsupported runner architecture: $(uname -m)" >&2
+              exit 1
+              ;;
+          esac
+          test "$actual_arch" = "$EXPECTED_ARCH"
+
+      - name: Assert source-free execution
+        shell: bash
+        run: |
+          test -f public-action/action.yml
+          test ! -d public-action/src
+          test ! -f consumer/cargo-fallback-ran.txt
+          test ! -f "${RUNNER_TEMP}/cargo-trap.log"
