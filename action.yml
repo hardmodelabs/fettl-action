@@ -14,6 +14,10 @@ inputs:
     description: 'Fettl version to install from downloads.fettl.dev release manifests. "latest" resolves to the current immutable release tag.'
     default: 'latest'
     required: false
+  mode:
+    description: 'Assessment mode: independent (real installer/CLI/check/score/delta with no managed enrollment, provider-settings request, or PR publisher; outputs are the workflow result, summary, artifacts and permission-eligible SARIF) or managed (authorized provider admission for authoritative PR publication). Default managed for compatibility; missing or denied managed authority never falls back to independent.'
+    default: 'managed'
+    required: false
   path:
     description: 'Project root to scan.'
     default: '.'

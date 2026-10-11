@@ -1,7 +1,7 @@
 # Fettl Action
 
 Run
-[Fettl](https://fettl-dev.major-leaf-1682.chatgpt.site)
+[Fettl](https://fettl.dev)
 in GitHub Actions without checking out or building the Fettl source
 repository.
 
@@ -24,9 +24,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.29
+      - uses: hardmodelabs/fettl-action@v0.19.78
         with:
-          version: 0.19.29
+          version: 0.19.78
+          mode: independent
           scan-mode: auto
           baseline-mode: new-only
           fail-on: high
@@ -34,19 +35,19 @@ jobs:
           summary-finding-cap: 10
 ```
 
-`v0.19.29` is the immutable wrapper candidate for Fettl `v0.19.29`:
+`v0.19.78` installs the Apache-2.0 OSS Fettl `v0.19.78` packages:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.29
+- uses: hardmodelabs/fettl-action@v0.19.78
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.29
+- uses: hardmodelabs/fettl-action@v0.19.78
   with:
-    version: 0.19.29
+    version: 0.19.78
 ```
 
 For pull-request runs, Fettl computes one canonical, ordered publication plan
@@ -63,14 +64,30 @@ installed binary version, and cached binary digest. A missing or invalid
 release fails closed; the Action never builds code from the repository being
 scanned.
 
-## Supported runners
+`mode` selects the assessment path. The default, `managed`, keeps the
+authorized provider admission for authoritative PR publication: a managed
+assertion that is missing, stale, or denied stops the run explicitly and never
+falls back to `independent`. `mode: independent` runs a real independent
+assessment without a managed account — the actual installer, CLI, check,
+score, and delta path under trusted workflow settings and the exact selected
+base/head — using no paid grant and requesting no provider settings. Its
+outputs are the workflow result, job summary, artifacts, and
+permission-eligible SARIF; there is no managed publisher and no PR-comment
+service, and an invalid `mode` fails clearly instead of guessing:
+
+```yaml
+- uses: hardmodelabs/fettl-action@v0.19.78
+  with:
+    mode: independent
+```
+
+## Supported 0.19.78 runners
 
 - Linux x86_64
-- Linux ARM64
-- macOS Intel
 - macOS Apple Silicon
 
-Other operating systems and architectures fail before download.
+The selected package must exist in the release manifest. Missing platforms
+fail explicitly; the Action does not build a replacement binary.
 
 ## Version policy
 
@@ -91,11 +108,8 @@ Other operating systems and architectures fail before download.
 - If a regression is found, `v0` is moved back to the last verified immutable
   full-version tag. Full-version tags are never rewritten.
 
-The `v0` compatibility alias has not been published yet. The Action's
-machine-readable assessment requires an active Fettl Pro entitlement.
-Automated runner provisioning for that entitlement is still being completed,
-so this corrective tag is a release candidate rather than the default
-integration.
+`mode: independent` requires no managed entitlement. Managed assessment keeps
+its provider admission and does not fall back to independent assessment.
 
 This public repository is the source-free GitHub Action distribution boundary.
 It intentionally contains only Action metadata, the reviewed generated bundle,
