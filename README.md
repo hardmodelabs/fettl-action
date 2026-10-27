@@ -24,9 +24,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.78
+      - uses: hardmodelabs/fettl-action@v0.19.79
         with:
-          version: 0.19.78
+          version: 0.19.79
           mode: independent
           scan-mode: auto
           baseline-mode: new-only
@@ -38,16 +38,16 @@ jobs:
 `v0.19.78` installs the Apache-2.0 OSS Fettl `v0.19.78` packages:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.78
+- uses: hardmodelabs/fettl-action@v0.19.79
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.78
+- uses: hardmodelabs/fettl-action@v0.19.79
   with:
-    version: 0.19.78
+    version: 0.19.79
 ```
 
 For pull-request runs, Fettl computes one canonical, ordered publication plan
@@ -76,7 +76,7 @@ permission-eligible SARIF; there is no managed publisher and no PR-comment
 service, and an invalid `mode` fails clearly instead of guessing:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.78
+- uses: hardmodelabs/fettl-action@v0.19.79
   with:
     mode: independent
 ```
