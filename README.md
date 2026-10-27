@@ -35,7 +35,8 @@ jobs:
           summary-finding-cap: 10
 ```
 
-`v0.19.78` installs the Apache-2.0 OSS Fettl `v0.19.78` packages:
+`v0.19.79` uses the Apache-2.0 OSS Fettl packages. Set `version` to pin
+the binary as shown below; the default is the current public release:
 
 ```yaml
 - uses: hardmodelabs/fettl-action@v0.19.79
@@ -81,7 +82,7 @@ service, and an invalid `mode` fails clearly instead of guessing:
     mode: independent
 ```
 
-## Supported 0.19.78 runners
+## Supported runners
 
 - Linux x86_64
 - macOS Apple Silicon
