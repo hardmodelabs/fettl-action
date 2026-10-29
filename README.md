@@ -24,9 +24,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: hardmodelabs/fettl-action@v0.19.83
+      - uses: hardmodelabs/fettl-action@v0.19.84
         with:
-          version: 0.19.83
+          version: 0.19.84
           mode: independent
           scan-mode: auto
           baseline-mode: new-only
@@ -39,16 +39,16 @@ jobs:
 the binary as shown below; the default is the current public release:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.83
+- uses: hardmodelabs/fettl-action@v0.19.84
 ```
 
 The Action ref selects the wrapper bundle. The optional `version` input
 selects the Fettl binary installed by that bundle:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.83
+- uses: hardmodelabs/fettl-action@v0.19.84
   with:
-    version: 0.19.83
+    version: 0.19.84
 ```
 
 For pull-request runs, Fettl computes one canonical, ordered publication plan
@@ -77,7 +77,7 @@ permission-eligible SARIF; there is no managed publisher and no PR-comment
 service, and an invalid `mode` fails clearly instead of guessing:
 
 ```yaml
-- uses: hardmodelabs/fettl-action@v0.19.83
+- uses: hardmodelabs/fettl-action@v0.19.84
   with:
     mode: independent
 ```
